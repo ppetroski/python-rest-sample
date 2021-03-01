@@ -1,10 +1,10 @@
 #!/bin/sh
 cd $(dirname $0)
 cd ../../
-#cp "$PWD"/environment/docker.py "$PWD"/config.py
+cp "$PWD"/environment/docker.py "$PWD"/config.py
 
 db_container_name="sample-db"
-db_image_name="mysql"
+db_image_name="mariadb"
 container_name="sample-app"
 image_name="sample-app-docker"
 
