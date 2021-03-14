@@ -3,3 +3,4 @@ venv/
 .idea/
 *.pyc
 *.pyo
+config.py

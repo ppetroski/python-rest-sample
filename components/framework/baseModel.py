@@ -56,13 +56,20 @@ class BaseModel(object):
                         relations.append(relation)
                     columns[c] = relations
                 else:
-                    relation = {}
-                    for o in rel.__table__.columns:
-                        if o.name in rel._remove_columns:
-                            continue
+                    if isinstance(rel, object):
+                        if hasattr(rel, '__table__'):
+                            relation = {}
+                            for o in rel.__table__.columns:
+                                if o.name in rel._remove_columns:
+                                    continue
+                                else:
+                                    relation[o.name] = getattr(rel, o.name)
+                            columns[c] = relation
                         else:
-                            relation[o.name] = getattr(rel, o.name)
-                    columns[c] = relation
+                            columns[c] = rel
+
+                    else:
+                        columns[c] = rel
         return columns
 
     @validates('created_at')

@@ -65,7 +65,7 @@ class BaseController(Resource):
         else:
             return self._message('The API endpoint has been improperly configured. Please contact support.', 'failure')
 
-    def post(self, uuid=None, init=None):
+    def post(self, uuid=None):
         # Create and save a new model
         try:
             if self._model != None:
@@ -79,12 +79,13 @@ class BaseController(Resource):
                         model = type(self._model()).__name__
                         return self._message(f'"{model}" record not found for "{uuid}"', 'failure')
                 else:
-                    data = self._model(post)
-                    self._session.add(data)
+                    model = type(self._model()).__name__
+                    return self._message(f'Please use the correct method to create a "{model}" record', 'failure')
                 self._session.commit()
                 return self._paginate()
             else:
-                return self._message('The API endpoint has been improperly configured. Please contact support.', 'failure')
+                return self._message('The API endpoint has been improperly configured. Please contact support.',
+                                     'failure')
         except ValueError as message:
             self._session.rollback()
             self._session.rollback()
@@ -97,31 +98,65 @@ class BaseController(Resource):
             logger.error(error)
             return self._message('Unexpected error: ' + str(sys.exc_info()[1]), 'failure')
 
-    def put(self):
-        return self.post(self)
+    def put(self, uuid=None):
+        # Create and save a new model
+        try:
+            if self._model != None:
+                post = request.get_json()
+                if uuid:
+                    model = type(self._model()).__name__
+                    return self._message(f'Please use the correct method to update the "{model}" record for "{uuid}"', 'failure')
+                else:
+                    data = self._model(post)
+                    self._session.add(data)
+                self._session.commit()
+                return self._paginate()
+            else:
+                return self._message('The API endpoint has been improperly configured. Please contact support.',
+                                     'failure')
+        except ValueError as message:
+            self._session.rollback()
+            self._session.rollback()
+            return self._message(str(message), 'failure')
+        except:
+            self._session.rollback()
+            error = ''
+            for ele in sys.exc_info():
+                error += str(ele)
+            logger.error(error)
+            return self._message('Unexpected error: ' + str(sys.exc_info()[1]), 'failure')
 
     def _paginate(self):
-        # include Joins for relations requested via expand parameter
-        relations = request.args.getlist('expand')
-        for relation in relations:
-            if hasattr(self._model, relation):
-                self._query = self._query.options(
-                    joinedload(getattr(self._model, relation))
-                )
+        params = request.args.getlist('expand')
+        expand = []
+        # let's process them as an array
+        for param in params:
+            # if value is comma separated, let's process each of them
+            relations = param.split(',')
+            for relation in relations:
+                relation = relation.strip()
+                expand.append(relation)
+                if hasattr(self._model, relation):
+                    rel = getattr(self._model, relation)
+                    # if a table include Joins for relationship
+                    if hasattr(rel, '__table__'):
+                        self._query = self._query.options(
+                            joinedload(getattr(self._model, relation))
+                        )
 
         count = self._query.count()
 
         # Perform Pagination
         page = request.args.get('page', default=1, type=int)
         per_page = request.args.get('per-page', default=25, type=int)
-        self._query = self._query.limit(per_page).offset((page-1) * per_page)
+        self._query = self._query.limit(per_page).offset((page - 1) * per_page)
 
         # Query Data and serialize
         data = self._query.all()
         if isinstance(data, list):
-            data = [m.serialize(relations) for m in data]
+            data = [m.serialize(expand) for m in data]
         else:
-            data = data.serialize(relations)
+            data = data.serialize(expand)
         return make_response(jsonify({'status': 'success', 'count': count, 'timestamp': time.time(), 'data': data}))
 
     @staticmethod
