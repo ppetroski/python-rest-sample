@@ -19,6 +19,7 @@ class BaseController(Resource):
     _query = None
     _session = None
     _relations = []
+    _key_words = ['expand', 'sort', 'page', 'per-page']
 
     def __init__(self):
         # specify connection string from config
@@ -156,18 +157,16 @@ class BaseController(Resource):
                     rel = getattr(self._model, relation)
                     # if a table, include Joins for relationship
                     if isinstance(rel, InstrumentedAttribute):
-                        if rel not in self._relations:
-                            self._relations.append(rel)
+                        if relation not in self._relations:
+                            self._relations.append(relation)
         return expand
 
     def _filter(self):
-        params = request.args.items()
+        params = request.args.lists()
         relations = []
         field = None
         for param in params:
-            if param[0] == 'expand':
-                continue
-            elif param[0] == 'sort':
+            if param[0] in self._key_words:
                 continue
             else:
                 namespace = param[0].split('.')
@@ -178,21 +177,22 @@ class BaseController(Resource):
                     for elem in namespace:
                         if hasattr(relations[-1], elem):
                             relations.append(getattr(relations[-1], elem))
-                        elif hasattr(relations[-1].property.mapper.class_, elem):
-                            relations.append(getattr(relations[-1].property.mapper.class_, elem))
+                        elif hasattr(relations[-1], "property"):
+                            if hasattr(relations[-1].property.mapper.class_, elem):
+                                relations.append(getattr(relations[-1].property.mapper.class_, elem))
 
                     field = relations[-1]
                     rel = ".".join(namespace[0:-1])
                     if len(namespace) > 1 and rel not in self._relations:
                         self._relations.append(rel)
 
-                if isinstance(param[1], list):
-                    self._query = self._query.filter(field.in_(param[1]))
-                elif "%" in param[1]:
-                    self._query = self._query.filter(field.like(param[1]))
+                if len(param[1]) == 1:
+                    if "%" in param[1][0]:
+                        self._query = self._query.filter(field.like(param[1][0]))
+                    else:
+                        self._query = self._query.filter(field == param[1][0])
                 else:
-                    self._query = self._query.filter(field == param[1])
-
+                    self._query = self._query.filter(field.in_(param[1]))
 
         return self
 
@@ -225,8 +225,9 @@ class BaseController(Resource):
             for elem in namespace:
                 if hasattr(relations[-1], elem):
                     relations.append(getattr(relations[-1], elem))
-                elif hasattr(relations[-1].property.mapper.class_, elem):
-                    relations.append(getattr(relations[-1].property.mapper.class_, elem))
+                elif hasattr(relations[-1], "property"):
+                    if hasattr(relations[-1].property.mapper.class_, elem):
+                        relations.append(getattr(relations[-1].property.mapper.class_, elem))
 
         try:
             if b_desc:
