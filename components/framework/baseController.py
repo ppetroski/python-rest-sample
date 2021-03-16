@@ -1,15 +1,14 @@
 import logging
 import sys
 import time
-
-from sqlalchemy.orm import joinedload
-
 import config
 import sqlalchemy as db
 from datetime import datetime
 from flask import request, jsonify, make_response
 from flask_restful import Resource
 from sqlalchemy.orm.attributes import InstrumentedAttribute
+from sqlalchemy.orm import joinedload
+
 
 logger = logging.getLogger(__name__)
 
@@ -162,21 +161,44 @@ class BaseController(Resource):
         return expand
 
     def _filter(self):
-        rel = ""
-        if rel and rel not in self._relations:
-            self._relations.append(rel)
+        params = request.args.items()
+        relations = []
+        for param in params:
+            if param[0] == 'expand':
+                continue
+            elif param[0] == 'sort':
+                continue
+            else:
+                namespace = param[0].split('.')
+                relations.append(self._model)
+                if len(namespace) == 1 and hasattr(relations[-1], namespace[0]):
+                    self._query = self._query.filter(getattr(relations[-1], namespace[0]) == param[1])
+                else:
+                    for elem in namespace:
+                        if hasattr(relations[-1], elem):
+                            relations.append(getattr(relations[-1], elem))
+                        elif hasattr(relations[-1].property.mapper.class_, elem):
+                            relations.append(getattr(relations[-1].property.mapper.class_, elem))
+
+                    self._query = self._query.filter(relations[-1] == param[1])
+                    rel = ".".join(namespace[0:-1])
+                    if len(namespace) > 1 and rel not in self._relations:
+                        self._relations.append(rel)
+
         return self
 
     def _join(self):
-        for relation in self._relations:
-            if relation:
-                self._query = self._query.outerjoin(relation).options(
-                            joinedload(relation)
-                        )
+        for record in self._relations:
+            if record:
+                self._query = self._query.outerjoin(record).options(
+                    joinedload(record)
+                )
+
         return self
 
     def _sort(self):
         b_desc = False
+        relations = []
         param = request.args.get('sort', default=None, type=str)
         if not param:
             return self
@@ -186,23 +208,29 @@ class BaseController(Resource):
             param = param[1:]
 
         namespace = param.split('.')
-        sort = self._model
+        relations.append(self._model)
         if len(namespace) == 1:
-            sort = getattr(sort, namespace[0])
+            if hasattr(relations[-1], namespace[0]):
+                relations.append(getattr(relations[-1], namespace[0]))
         else:
-            for elem in param.split('.'):
-                if hasattr(sort, elem):
-                    sort = getattr(sort, elem)
-                    if isinstance(sort, InstrumentedAttribute):
-                        if sort not in self._relations:
-                            self._relations.append(sort)
-                else:
-                    sort = getattr(sort.property.mapper.class_, elem)
+            for elem in namespace:
+                if hasattr(relations[-1], elem):
+                    relations.append(getattr(relations[-1], elem))
+                elif hasattr(relations[-1].property.mapper.class_, elem):
+                    relations.append(getattr(relations[-1].property.mapper.class_, elem))
 
-        if b_desc:
-            self._query = self._query.order_by(sort.desc())
-        else:
-            self._query = self._query.order_by(sort)
+        try:
+            if b_desc:
+                self._query = self._query.order_by(relations[-1].desc())
+            else:
+                self._query = self._query.order_by(relations[-1].asc())
+
+            rel = ".".join(namespace[0:-1])
+            if len(namespace) > 1 and rel not in self._relations:
+                self._relations.append(rel)
+
+        except Exception as e:
+            pass
 
         return self
 
