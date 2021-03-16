@@ -61,7 +61,7 @@ class BaseController(Resource):
                     # I believe in soft deletes, so we'll do an update
                     data.deleted_at = datetime.now()
                     self._session.commit()
-                    return self._prepare()
+                    return make_response(jsonify({'status': 'success', 'count': 0, 'timestamp': time.time(), 'data': None}))
                 else:
                     model = type(self._model()).__name__
                     return self._message(f'"{model}" record not found for "{uuid}"', 'failure')
