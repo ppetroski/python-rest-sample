@@ -163,6 +163,7 @@ class BaseController(Resource):
     def _filter(self):
         params = request.args.items()
         relations = []
+        field = None
         for param in params:
             if param[0] == 'expand':
                 continue
@@ -172,7 +173,7 @@ class BaseController(Resource):
                 namespace = param[0].split('.')
                 relations.append(self._model)
                 if len(namespace) == 1 and hasattr(relations[-1], namespace[0]):
-                    self._query = self._query.filter(getattr(relations[-1], namespace[0]) == param[1])
+                    field = getattr(relations[-1], namespace[0])
                 else:
                     for elem in namespace:
                         if hasattr(relations[-1], elem):
@@ -180,10 +181,18 @@ class BaseController(Resource):
                         elif hasattr(relations[-1].property.mapper.class_, elem):
                             relations.append(getattr(relations[-1].property.mapper.class_, elem))
 
-                    self._query = self._query.filter(relations[-1] == param[1])
+                    field = relations[-1]
                     rel = ".".join(namespace[0:-1])
                     if len(namespace) > 1 and rel not in self._relations:
                         self._relations.append(rel)
+
+                if isinstance(param[1], list):
+                    self._query = self._query.filter(field.in_(param[1]))
+                elif "%" in param[1]:
+                    self._query = self._query.filter(field.like(param[1]))
+                else:
+                    self._query = self._query.filter(field == param[1])
+
 
         return self
 
