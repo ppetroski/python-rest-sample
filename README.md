@@ -10,20 +10,18 @@ using **Python**, **Flask** and **SQLAlchemy**.
 ## Functionality
 
 * [x] Implemented CRUD endpoints for Profiles and Interactions - with relations
+* [x] Responses with pagination, sorting and filtering
 * [x] Integrated with Database, MySQL
 * [x] Input validation and exception handling
-* [X] Geo Address lookup and coordinates methods (not applied)
-* [X] Unit test for models
+* [x] Geo Address lookup and coordinates methods (not applied)
+* [x] Unit test for models
 * [x] Functional test via Postman
 * [x] User guide with data and code samples
 
 #### Todo
 
-* [ ] Responses with pagination, sorting and filtering (more than just UUID)
 * [ ] Interactive "/environment/build/docker.sh" script to push/pull image to/from docker registry for environment versioning
 * [ ] Ability to detect and execute new database migration scripts
-* [ ] FK validation checks should happen and report friendlier response
-* [ ] Geo Address lookup and coordinates methods (license applied)
 * [ ] Add friendly description to documentation along with required fields and lengths
 * [ ] Add additional negative tests for error and validation handling
 
