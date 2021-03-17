@@ -9,7 +9,7 @@ using **Python**, **Flask** and **SQLAlchemy**.
 
 ## Functionality
 
-* [x] Implemented CRUD endpoints for Profiles and Interactions - with relations
+* [x] Implemented CRUD endpoints for Profiles and Interactions - with relation expansion
 * [x] Responses with pagination, sorting and filtering
 * [x] Integrated with Database, MySQL
 * [x] Input validation and exception handling
@@ -20,6 +20,8 @@ using **Python**, **Flask** and **SQLAlchemy**.
 
 #### Todo
 
+* [ ] Filter situations for greater than, less than and between
+* [ ] Ability to walk join relationships
 * [ ] Interactive "/environment/build/docker.sh" script to push/pull image to/from docker registry for environment versioning
 * [ ] Ability to detect and execute new database migration scripts
 * [ ] Add friendly description to documentation along with required fields and lengths
@@ -29,6 +31,93 @@ using **Python**, **Flask** and **SQLAlchemy**.
 
 - Postman Collection for testing, https://raw.githubusercontent.com/ppetroski/python-rest-sample/master/resources/sample.postman_collection.json
 - HTML User Guide (generated from postman collection and homegrown tool), https://htmlpreview.github.io/?https://github.com/ppetroski/python-rest-sample/blob/master/resources/guide.html
+
+## Usage
+All endpoints can be discovered by looking in the app.py file.
+
+Example line: 
+```
+api.add_resource(Profile, '/profile', '/profile/<uuid>')
+```
+
+They will also take querystring parameters that will modify the results. 
+Examples, outlined below, include sorting, filtering, pagination, etc...
+Currently, only immediate relationship can be used. 
+The ability to walk multiple relationship is not yet working and will result in an error. 
+
+#### CRUD Usage
+The above on the localhost would generate the following URL for listing profiles
+http://127.0.0.1:5000/profile
+
+New profiles can be created by issuing an HTTP PUT with raw json to http://127.0.0.1:5000/profile
+
+A single profile can get requested by issuing an HTTP GET to  http://127.0.0.1:5000/profile/<uuid>
+
+A profile can be updated by issuing an HTTP POST with raw json to http://127.0.0.1:5000/profile/<uuid>
+
+Likewise, profiles can be deleted by issuing an HTTP DEL to http://127.0.0.1:5000/profile/<uuid>
+
+In the above examples `<uuid>` is the uuid value of the company
+
+#### Pagination
+Since results will be paginated, the following parameters exist for controlling
+both the current page, and the number of results per the page. 
+
+Example using the default values:
+```
+?page=1&page-size=25
+```
+
+#### Sorting
+Results can be sorted but when sorting by a relationship, it sorts the parent object.
+The child relation object are still rendered in the default order. A future enhancement may
+become available to address this. To sort descending use '-' in front of the field to be sort
+
+Example using descending sort on a relationship field:
+```
+?sort=-internactions.created_at
+```
+
+#### Filtering
+Results can be filtered but all filters are applied in an "and" approach.
+The only exception is if an array is supplied to a single column. 
+Those would be considered as an "or" but for that criteria only.
+
+Example for literal match
+```
+?name=Paul%20Petroski
+```
+Example for literal match on relation:
+```
+?interactions.type=EMAIL
+```
+
+Example for like match:
+```
+?email=%gmail%
+```
+
+Example for in match:
+```
+?email=Paul.Petroski17@gmail.com&email=Paul.Petroski@hotmail.com
+```
+
+#### Expanding
+Results can be expanded to include related objects. 
+These relations can be provided as a comma separated list or as an array.
+
+Example for single relationship:
+```
+?expand=interactions
+```
+Example for multiple relationship (comma separated):
+```
+?expand=interactions,other
+```
+Example for multiple relationship (array)
+```
+?expand=interactions&expand=oter
+```
 
 ## Setup
 

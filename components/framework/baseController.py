@@ -171,8 +171,9 @@ class BaseController(Resource):
             else:
                 namespace = param[0].split('.')
                 relations.append(self._model)
-                if len(namespace) == 1 and hasattr(relations[-1], namespace[0]):
-                    field = getattr(relations[-1], namespace[0])
+                if len(namespace) == 1:
+                    if hasattr(relations[-1], namespace[0]):
+                        field = getattr(relations[-1], namespace[0])
                 else:
                     for elem in namespace:
                         if hasattr(relations[-1], elem):
@@ -186,13 +187,14 @@ class BaseController(Resource):
                     if len(namespace) > 1 and rel not in self._relations:
                         self._relations.append(rel)
 
-                if len(param[1]) == 1:
-                    if "%" in param[1][0]:
-                        self._query = self._query.filter(field.like(param[1][0]))
+                if isinstance(field, InstrumentedAttribute):
+                    if len(param[1]) == 1:
+                        if "%" in param[1][0]:
+                            self._query = self._query.filter(field.like(param[1][0]))
+                        else:
+                            self._query = self._query.filter(field == param[1][0])
                     else:
-                        self._query = self._query.filter(field == param[1][0])
-                else:
-                    self._query = self._query.filter(field.in_(param[1]))
+                        self._query = self._query.filter(field.in_(param[1]))
 
         return self
 
