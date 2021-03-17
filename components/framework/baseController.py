@@ -38,6 +38,7 @@ class BaseController(Resource):
         session.configure(bind=engine)
         self._session = session()
 
+        self._relations = [] # reset the property as it tends to be retained across instances
         # automatically filter records that are deleted
         self._query = self._session.query(self._model).filter_by(deleted_at=None)
 
